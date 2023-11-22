@@ -50,18 +50,18 @@ type QueryResult struct {
 
 // Expose sid to save in admin settings
 func (client *Client) GetSid() (sid string) {
-        return client.sessionID
+	return client.sessionID
 }
 
-//Expose Loc to save in admin settings
+// Expose Loc to save in admin settings
 func (client *Client) GetLoc() (loc string) {
 	return client.instanceURL
 }
 
 // Set SID and Loc as a means to log in without LoginPassword
 func (client *Client) SetSidLoc(sid string, loc string) {
-        client.sessionID = sid
-        client.instanceURL = loc
+	client.sessionID = sid
+	client.instanceURL = loc
 }
 
 // Query runs an SOQL query. q could either be the SOQL string or the nextRecordsURL.
@@ -332,7 +332,7 @@ func parseHost(input string) string {
 	return "Failed to parse URL input"
 }
 
-//Get the List of all available objects and their metadata for your organization's data
+// Get the List of all available objects and their metadata for your organization's data
 func (client *Client) DescribeGlobal() (*SObjectMeta, error) {
 	apiPath := fmt.Sprintf("/services/data/v%s/sobjects", client.apiVersion)
 	baseURL := strings.TrimRight(client.baseURL, "/")
@@ -362,4 +362,48 @@ func (client *Client) DescribeGlobal() (*SObjectMeta, error) {
 		return nil, err
 	}
 	return &meta, nil
+}
+
+type BulkQueryPostBody struct {
+	Operation       string `json:"operation"`
+	Query           string `json:"query"`
+	ContentType     string `json:"contentType"`
+	ColumnDelimiter string `json:"columnDelimiter"`
+	LineEnding      string `json:"lineEnding"`
+}
+
+func (client *Client) BulkQuery(query string) (*BulkJob, error) {
+	postBody := BulkQueryPostBody{
+		Operation:       "queryAll",
+		Query:           query,
+		ContentType:     "CSV",
+		ColumnDelimiter: "COMMA",
+		LineEnding:      "LF",
+	}
+	b, err := json.Marshal(postBody)
+	if err != nil {
+		return nil, err
+	}
+	apiPath := fmt.Sprintf("/services/data/v%s/jobs/query", client.apiVersion)
+	baseURL := strings.TrimRight(client.instanceURL, "/")
+	url := baseURL + apiPath
+	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", "Bearer "+client.sessionID)
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	job := &BulkJob{}
+	respData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(respData, job); err != nil {
+		return nil, err
+	}
+	return job, nil
 }
