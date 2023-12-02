@@ -405,5 +405,6 @@ func (client *Client) BulkQuery(query string) (*BulkJob, error) {
 	if err := json.Unmarshal(respData, job); err != nil {
 		return nil, err
 	}
+	job.client = client
 	return job, nil
 }
