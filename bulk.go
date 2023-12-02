@@ -48,20 +48,38 @@ type BulkJobStatus struct {
 	TotalProcessingTimeMilliseconds int64        `json:"totalProcessingTime"`
 }
 
+type SalesforceTime struct {
+	time.Time
+}
+
+func (t *SalesforceTime) UnmarshalJSON(b []byte) error {
+	s := string(b)
+	if s == "null" {
+		return nil
+	}
+	// parsing time \"2023-12-02T02:30:02.000+0000\" as \"2006-01-02T15:04:05Z07:00\": cannot parse \"+0000\" as \"Z07:00\""
+	tt, err := time.Parse(`"2006-01-02T15:04:05.000-0700"`, s)
+	if err != nil {
+		return err
+	}
+	*t = SalesforceTime{tt}
+	return nil
+}
+
 type BulkJob struct {
 	client          *Client
-	Id              string    `json:"id"`
-	Operation       string    `json:"operation"`
-	Object          string    `json:"object"`
-	CreatedById     string    `json:"createdById"`
-	CreatedDate     time.Time `json:"createdDate"`
-	SystemModstamp  time.Time `json:"systemModstamp"`
-	State           string    `json:"state"`
-	ConcurrencyMode string    `json:"concurrencyMode"`
-	ContentType     string    `json:"contentType"`
-	ApiVersion      float64   `json:"apiVersion"`
-	LineEnding      string    `json:"lineEnding"`
-	ColumnDelimiter string    `json:"columnDelimiter"`
+	Id              string         `json:"id"`
+	Operation       string         `json:"operation"`
+	Object          string         `json:"object"`
+	CreatedById     string         `json:"createdById"`
+	CreatedDate     SalesforceTime `json:"createdDate"`
+	SystemModstamp  SalesforceTime `json:"systemModstamp"`
+	State           string         `json:"state"`
+	ConcurrencyMode string         `json:"concurrencyMode"`
+	ContentType     string         `json:"contentType"`
+	ApiVersion      float64        `json:"apiVersion"`
+	LineEnding      string         `json:"lineEnding"`
+	ColumnDelimiter string         `json:"columnDelimiter"`
 }
 
 func (job *BulkJob) GetStatus() (*BulkJobStatus, error) {
