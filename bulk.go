@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -89,9 +90,9 @@ func (job *BulkJob) GetStatus() (*BulkJobStatus, error) {
 		return nil, err
 	}
 	status := &BulkJobStatus{}
-	err = json.Unmarshal(b, status)
-	if err != nil {
-		return nil, err
+	if err := json.Unmarshal(b, status); err != nil {
+		sfErr := ParseSalesforceError(0, b)
+		return nil, errors.Join(sfErr, err)
 	}
 	return status, nil
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -403,7 +404,8 @@ func (client *Client) BulkQuery(query string) (*BulkJob, error) {
 	}
 
 	if err := json.Unmarshal(respData, job); err != nil {
-		return nil, err
+		sfErr := ParseSalesforceError(resp.StatusCode, respData)
+		return nil, errors.Join(sfErr, err)
 	}
 	job.client = client
 	return job, nil
