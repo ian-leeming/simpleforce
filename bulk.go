@@ -1,7 +1,6 @@
 package simpleforce
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -37,7 +36,7 @@ func (j JobStateEnum) ToError() error {
 }
 
 type BulkJobResultSet struct {
-	Body *bytes.Buffer
+	Body io.Reader
 	Next string
 	Rows int
 }
@@ -133,17 +132,7 @@ func (job *BulkJob) GetResultSet(locator string) (*BulkJobResultSet, error) {
 
 	if resp.StatusCode >= 400 {
 		b, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("failed to get result set from bulk job: %s body(%s)", resp.Status, string(b))
-	}
-
-	out := &bytes.Buffer{}
-	if resp.ContentLength > 0 {
-		out = bytes.NewBuffer(make([]byte, 0, resp.ContentLength))
-	}
-
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return nil, err
+		return nil, ParseSalesforceError(resp.StatusCode, b)
 	}
 
 	// rows will simply be 0 if the header can't be parsed
@@ -151,7 +140,7 @@ func (job *BulkJob) GetResultSet(locator string) (*BulkJobResultSet, error) {
 		resp.Header.Get("Sforce-NumberOfRecords"),
 	)
 	return &BulkJobResultSet{
-		Body: out,
+		Body: resp.Body,
 		Next: resp.Header.Get("Sforce-Locator"),
 		Rows: rows,
 	}, nil
