@@ -36,7 +36,7 @@ func (j JobStateEnum) ToError() error {
 }
 
 type BulkJobResultSet struct {
-	Body io.Reader
+	Body io.ReadCloser
 	Next string
 	Rows int
 }
