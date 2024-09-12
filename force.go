@@ -226,17 +226,34 @@ func (client *Client) LoginPassword(username, password, token string) error {
 	return nil
 }
 
-// httpRequest executes an HTTP request to the salesforce server and returns the response data in byte buffer.
-func (client *Client) httpRequest(method, url string, body io.Reader) ([]byte, error) {
+func (client *Client) DoRequest(method, url string, body io.Reader, headers http.Header) (*http.Response, error) {
+	if headers == nil {
+		headers = make(http.Header)
+	}
+
+	if headers.Get("Authorization") == "" {
+		headers.Add("Authorization", fmt.Sprintf("Bearer %s", client.sessionID))
+	}
+
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, err
 	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", client.sessionID))
-	req.Header.Add("Content-Type", "application/json")
+	req.Header = headers
 
 	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// httpRequest executes an HTTP request to the salesforce server and returns the response data in byte buffer.
+func (client *Client) httpRequest(method, url string, body io.Reader) ([]byte, error) {
+	headers := make(http.Header)
+	headers.Add("Content-Type", "application/json")
+
+	resp, err := client.DoRequest(method, url, body, headers)
 	if err != nil {
 		return nil, err
 	}
